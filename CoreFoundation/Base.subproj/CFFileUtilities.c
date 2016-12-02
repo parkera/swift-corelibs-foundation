@@ -1166,3 +1166,69 @@ CF_PRIVATE void _CFIterateDirectory(CFStringRef directoryPath, Boolean appendSla
 #endif
 }
 
+#if DEPLOYMENT_RUNTIME_SWIFT
+
+// https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+// Version 0.8
+
+// This may not be safe to assume
+#define _kCFXDGStringEncoding kCFStringEncodingUTF8
+
+// All paths set in these environment variables must be absolute. If an implementation encounters a relative path in any of these variables it should consider the path invalid and ignore it.
+static CFStringRef _CFXDGCreateHome(void) {
+    const char *home = __CFgetenv("HOME");
+    if (home && strnlen(home, CFMaxPathSize) > 0) {
+        return CFStringCreateWithCString(kCFAllocatorSystemDefault, home, _kCFXDGStringEncoding);
+    } else {
+        return CFRetain(CFSTR(""));
+    }
+}
+
+/// a single base directory relative to which user-specific data files should be written. This directory is defined by the environment variable $XDG_DATA_HOME.
+CF_SWIFT_EXPORT
+CFStringRef _CFXDGCreateDataHomePath(void) {
+    // $XDG_DATA_HOME defines the base directory relative to which user specific data files should be stored. If $XDG_DATA_HOME is either not set or empty, a default equal to $HOME/.local/share should be used.
+    const char *dataHome = __CFgetenv("XDG_DATA_HOME");
+    if (dataHome && strnlen(dataHome, CFMaxPathSize) > 1 && dataHome[0] == '/') {
+        return CFStringCreateWithCString(kCFAllocatorSystemDefault, dataHome, _kCFXDGStringEncoding);
+    } else {
+        CFStringRef home = _CFXDGCreateHome();
+        CFStringRef result = CFStringCreateWithFormat(kCFAllocatorSystemDefault, NULL, CFSTR("%@/.local/share"), home);
+        CFRelease(home);
+        return result;
+    }
+}
+
+/// a single base directory relative to which user-specific configuration files should be written. This directory is defined by the environment variable $XDG_CONFIG_HOME.
+CF_SWIFT_EXPORT
+CFStringRef _CFXDGCreateConfigHomePath(void) {
+    return CFStringCreateWithCString(kCFAllocatorSystemDefault, "", kCFStringEncodingUTF8);
+}
+
+/// a set of preference ordered base directories relative to which data files should be searched. This set of directories is defined by the environment variable $XDG_DATA_DIRS.
+CF_SWIFT_EXPORT
+CFArrayRef _CFXDGCreateDataDirectoriesPaths(void) {
+    return CFArrayCreate(kCFAllocatorSystemDefault, NULL, 0, &kCFTypeArrayCallBacks);
+}
+
+/// a set of preference ordered base directories relative to which configuration files should be searched. This set of directories is defined by the environment variable $XDG_CONFIG_DIRS.
+CF_SWIFT_EXPORT
+CFArrayRef _CFXDGCreateConfigDirectoriesPaths(void) {
+    return CFArrayCreate(kCFAllocatorSystemDefault, NULL, 0, &kCFTypeArrayCallBacks);
+}
+
+/// a single base directory relative to which user-specific non-essential (cached) data should be written. This directory is defined by the environment variable $XDG_CACHE_HOME.
+CF_SWIFT_EXPORT
+CFStringRef _CFXDGCreateCacheDirectoryPath(void) {
+    return CFStringCreateWithCString(kCFAllocatorSystemDefault, "", kCFStringEncodingUTF8);
+}
+
+/// a single base directory relative to which user-specific runtime files and other file objects should be placed. This directory is defined by the environment variable $XDG_RUNTIME_DIR.
+CF_SWIFT_EXPORT
+CFStringRef _CFXDGCreateRuntimeDirectoryPath(void) {
+    return CFStringCreateWithCString(kCFAllocatorSystemDefault, "", kCFStringEncodingUTF8);
+}
+
+#endif
+
+

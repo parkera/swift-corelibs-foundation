@@ -29,6 +29,7 @@ class TestNSFileManager : XCTestCase {
             ("test_pathEnumerator",test_pathEnumerator),
             ("test_contentsOfDirectoryAtPath", test_contentsOfDirectoryAtPath),
             ("test_subpathsOfDirectoryAtPath", test_subpathsOfDirectoryAtPath),
+            ("test_xdg", test_xdg),
         ]
     }
     
@@ -409,5 +410,15 @@ class TestNSFileManager : XCTestCase {
         } catch {
             XCTFail("Failed to clean up files")
         }
+    }
+    
+    func test_xdg() {
+        let fm = FileManager.default
+        print(fm._xdgDataHomeDirectoryPath)
+        print(fm._xdgConfigHomeDirectoryPath)
+        print(fm._xdgDataDirectoriesPaths)
+        print(fm._xdgConfigDirectoriesPaths)
+        print(fm._xdgCacheDirectoryPath)
+        print(fm._xdgRuntimeDirectoryPath)
     }
 }
