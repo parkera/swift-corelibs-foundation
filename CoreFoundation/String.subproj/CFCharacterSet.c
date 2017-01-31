@@ -1351,6 +1351,23 @@ static int chcompar(const void *a, const void *b) {
     return -(int)(*(UniChar *)b - *(UniChar *)a);
 }
 
+// Search the string for duplicates and remove them (effectively shifting down the remainder of the string). This is a set after all.
+// precondition: *base must be sorted
+// returns: new length of the string
+static CFIndex removedupes(UniChar *base, CFIndex length) {
+    if (length < 2) return length;
+    
+    CFIndex j = 0;
+    for (CFIndex i = 1; i < length; i++) {
+        if (base[j] != base[i]) {
+            j++;
+            base[j] = base[i];
+        }
+    }
+    
+    return j + 1;
+}
+
 #if DEPLOYMENT_RUNTIME_SWIFT
 Boolean _CFCharacterSetInitWithCharactersInString(CFMutableCharacterSetRef cset, CFStringRef theString) {
     CFIndex length;
@@ -1362,6 +1379,7 @@ Boolean _CFCharacterSetInitWithCharactersInString(CFMutableCharacterSetRef cset,
         __CFCSetPutStringLength(cset, length);
         CFStringGetCharacters(theString, CFRangeMake(0, length), __CFCSetStringBuffer(cset));
         qsort(__CFCSetStringBuffer(cset), length, sizeof(UniChar), chcompar);
+        __CFCSetPutStringLength(cset, removedupes(__CFCSetStringBuffer(cset), length));
         
         if (0 == length) {
             __CFCSetPutHasHashValue(cset, true); // _hashValue is 0
@@ -1403,6 +1421,7 @@ CFCharacterSetRef CFCharacterSetCreateWithCharactersInString(CFAllocatorRef allo
         __CFCSetPutStringLength(cset, length);
         CFStringGetCharacters(theString, CFRangeMake(0, length), __CFCSetStringBuffer(cset));
         qsort(__CFCSetStringBuffer(cset), length, sizeof(UniChar), chcompar);
+        __CFCSetPutStringLength(cset, removedupes(__CFCSetStringBuffer(cset), length));
 
         if (0 == length) {
 	    __CFCSetPutHasHashValue(cset, true); // _hashValue is 0
@@ -2182,6 +2201,7 @@ void CFCharacterSetAddCharactersInRange(CFMutableCharacterSetRef theSet, CFRange
             __CFCSetPutStringLength(theSet, __CFCSetStringLength(theSet) + theRange.length);
             while (theRange.length--) *buffer++ = (UniChar)theRange.location++;
             qsort(__CFCSetStringBuffer(theSet), __CFCSetStringLength(theSet), sizeof(UniChar), chcompar);
+            __CFCSetPutStringLength(theSet, removedupes(__CFCSetStringBuffer(theSet), __CFCSetStringLength(theSet)));
             __CFCSetPutHasHashValue(theSet, false);
             return;
         }
@@ -2248,6 +2268,7 @@ void CFCharacterSetRemoveCharactersInRange(CFMutableCharacterSetRef theSet, CFRa
             __CFCSetPutStringLength(theSet, __CFCSetStringLength(theSet) + theRange.length);
             while (theRange.length--) *buffer++ = (UniChar)theRange.location++;
             qsort(__CFCSetStringBuffer(theSet), __CFCSetStringLength(theSet), sizeof(UniChar), chcompar);
+            __CFCSetPutStringLength(theSet, removedupes(__CFCSetStringBuffer(theSet), __CFCSetStringLength(theSet)));
             __CFCSetPutHasHashValue(theSet, false);
             return;
         }
@@ -2329,6 +2350,7 @@ void CFCharacterSetAddCharactersInString(CFMutableCharacterSetRef theSet,  CFStr
 		}
 		__CFCSetPutStringLength(theSet, newLength);
 		qsort(__CFCSetStringBuffer(theSet), newLength, sizeof(UniChar), chcompar);
+		__CFCSetPutStringLength(theSet, removedupes(__CFCSetStringBuffer(theSet), __CFCSetStringLength(theSet)));
 	    }
             __CFCSetPutHasHashValue(theSet, false);
 
@@ -2417,6 +2439,7 @@ void CFCharacterSetRemoveCharactersInString(CFMutableCharacterSetRef theSet, CFS
 	    }
             __CFCSetPutStringLength(theSet, newLength);
             qsort(__CFCSetStringBuffer(theSet), newLength, sizeof(UniChar), chcompar);
+            __CFCSetPutStringLength(theSet, removedupes(__CFCSetStringBuffer(theSet), __CFCSetStringLength(theSet)));
             __CFCSetPutHasHashValue(theSet, false);
 	    
 	    if (hasSurrogate) __CFApplySurrogatesInString(theSet, theString, &CFCharacterSetRemoveCharactersInRange);
