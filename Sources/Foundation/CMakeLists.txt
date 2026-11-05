@@ -20,7 +20,6 @@ add_library(Foundation
     Bundle.swift
     ByteCountFormatter.swift
     CGFloat.swift
-    CharacterSet.swift
     DateComponents.swift
     DateComponentsFormatter.swift
     DateFormatter.swift
@@ -59,7 +58,6 @@ add_library(Foundation
     NSCalendar.swift
     NSCFArray.swift
     NSCFBoolean.swift
-    NSCFCharacterSet.swift
     NSCFDictionary.swift
     NSCFSet.swift
     NSCFString.swift
