@@ -9,6 +9,7 @@
 
 @_implementationOnly import CoreFoundation
 internal import Synchronization
+@_spi(SwiftCorelibsFoundation) import FoundationEssentials
 
 @available(*, unavailable)
 extension NSKeyedUnarchiver : @unchecked Sendable { }
@@ -67,7 +68,7 @@ open class NSKeyedUnarchiver : NSCoder {
     private var _replacementMap : Dictionary<AnyHashable, Any> = [:]
     private var _classNameMap : Dictionary<String, AnyClass> = [:]
     private var _classes : Dictionary<UInt32, AnyClass> = [:]
-    private var _cache : Array<_NSKeyedArchiverUID> = []
+    private var _cache : Array<_PropertyListUID> = []
     private var _allowedClasses : Array<[AnyClass]> = []
     private var _error : Error? = nil
     
@@ -221,7 +222,7 @@ open class NSKeyedUnarchiver : NSCoder {
     /**
         Dereferences, but does not decode, an object reference
      */
-    private func _dereferenceObjectReference(_ unwrappedObjectRef: _NSKeyedArchiverUID) -> Any? {
+    private func _dereferenceObjectReference(_ unwrappedObjectRef: _PropertyListUID) -> Any? {
         let uid = Int(unwrappedObjectRef.value)
         
         guard uid < self._objects.count else {
@@ -359,7 +360,7 @@ open class NSKeyedUnarchiver : NSCoder {
     /**
         Validate a class reference against a class list, and return the class object if allowed
      */
-    private func _validateAndMapClassReference(_ classReference: _NSKeyedArchiverUID,
+    private func _validateAndMapClassReference(_ classReference: _PropertyListUID,
                                                allowedClasses: [AnyClass]?) throws -> AnyClass? {
         let classUid = classReference.value
         var classToConstruct : AnyClass? = _classes[classUid]
@@ -385,11 +386,11 @@ open class NSKeyedUnarchiver : NSCoder {
         return classToConstruct
     }
     
-    private func _cachedObjectForReference(_ objectRef: _NSKeyedArchiverUID) -> Any? {
+    private func _cachedObjectForReference(_ objectRef: _PropertyListUID) -> Any? {
         return self._objRefMap[objectRef.value]
     }
     
-    private func _cacheObject(_ object: Any, forReference objectRef: _NSKeyedArchiverUID) {
+    private func _cacheObject(_ object: Any, forReference objectRef: _PropertyListUID) {
         self._objRefMap[objectRef.value] = object
     }
     
@@ -403,7 +404,7 @@ open class NSKeyedUnarchiver : NSCoder {
         
         let classRef = dict["$class"]
         
-        return classRef is _NSKeyedArchiverUID
+        return classRef is _PropertyListUID
     }
     
     
@@ -475,7 +476,7 @@ open class NSKeyedUnarchiver : NSCoder {
             throw InternalError.decodingHasAlreadyFailed
         }
 
-        guard let objectRef = objectRef as? _NSKeyedArchiverUID else {
+        guard let objectRef = objectRef as? _PropertyListUID else {
             throw _decodingError(.coderReadCorrupt,
                                  withDescription: "Object \(objectRef) is not a reference. The data may be corrupt.")
         }
@@ -495,7 +496,7 @@ open class NSKeyedUnarchiver : NSCoder {
                                      withDescription: "Invalid object encoding \(objectRef). The data may be corrupt.")
             }
 
-            guard let classReference = dict["$class"] as? _NSKeyedArchiverUID else {
+            guard let classReference = dict["$class"] as? _PropertyListUID else {
                 throw _decodingError(.coderReadCorrupt,
                                      withDescription: "Invalid class reference \(String(describing: dict["$class"])). The data may be corrupt.")
             }
@@ -589,7 +590,7 @@ open class NSKeyedUnarchiver : NSCoder {
         }
         
         for objectRef in unwrappedObjectRefs {
-            guard objectRef is _NSKeyedArchiverUID else {
+            guard objectRef is _PropertyListUID else {
                 return
             }
             

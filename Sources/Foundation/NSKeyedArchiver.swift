@@ -227,7 +227,7 @@ open class NSKeyedArchiver : NSCoder {
             }
         } else {
             let stream = unsafeDowncast(self._stream, to: CFWriteStream.self)
-            success = CFPropertyListWrite(plist, stream, kCFPropertyListXMLFormat_v1_0, 0, nil) > 0
+            success = CFPropertyListWrite(plist, stream, CFPropertyListFormat.xmlFormat_v1_0, 0, nil) > 0
         }
         
         return success

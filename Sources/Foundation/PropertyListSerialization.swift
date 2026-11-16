@@ -9,38 +9,16 @@
 
 @_implementationOnly import CoreFoundation
 
-let kCFPropertyListOpenStepFormat = CFPropertyListFormat.openStepFormat
-let kCFPropertyListXMLFormat_v1_0 = CFPropertyListFormat.xmlFormat_v1_0
-let kCFPropertyListBinaryFormat_v1_0 = CFPropertyListFormat.binaryFormat_v1_0
-
 extension PropertyListSerialization {
-
-    public struct MutabilityOptions : OptionSet, Sendable {
-        public let rawValue : UInt
-        public init(rawValue: UInt) { self.rawValue = rawValue }
-
-        public static let mutableContainers = MutabilityOptions(rawValue: 1)
-        public static let mutableContainersAndLeaves = MutabilityOptions(rawValue: 2)
-    }
-
-    public typealias PropertyListFormat = PropertyListDecoder.PropertyListFormat
-
-    public typealias ReadOptions = MutabilityOptions
     public typealias WriteOptions = Int
-}
 
-@available(*, unavailable)
-extension PropertyListSerialization : @unchecked Sendable { }
-
-open class PropertyListSerialization : NSObject {
-
-    open class func propertyList(_ plist: Any, isValidFor format: PropertyListFormat) -> Bool {
+    public class func propertyList(_ plist: Any, isValidFor format: PropertyListFormat) -> Bool {
         let fmt = CFPropertyListFormat(rawValue: CFIndex(format.rawValue))!
         let plistObj = __SwiftValue.store(plist)
         return CFPropertyListIsValid(plistObj, fmt)
     }
 
-    open class func data(fromPropertyList plist: Any, format: PropertyListFormat, options opt: WriteOptions) throws -> Data {
+    public class func data(fromPropertyList plist: Any, format: PropertyListFormat, options opt: WriteOptions) throws -> Data {
         var error: Unmanaged<CFError>? = nil
         let result = withUnsafeMutablePointer(to: &error) { (outErr: UnsafeMutablePointer<Unmanaged<CFError>?>) -> CFData? in
             let fmt = CFPropertyListFormat(rawValue: CFIndex(format.rawValue))!
@@ -56,41 +34,31 @@ open class PropertyListSerialization : NSObject {
         }
     }
 
-    open class func propertyList(from data: Data, options opt: ReadOptions = [], format: UnsafeMutablePointer<PropertyListFormat>?) throws -> Any {
-        var fmt = kCFPropertyListBinaryFormat_v1_0
-        var error: Unmanaged<CFError>? = nil
-        let decoded = withUnsafeMutablePointer(to: &fmt) { (outFmt: UnsafeMutablePointer<CFPropertyListFormat>) -> AnyObject? in
-            withUnsafeMutablePointer(to: &error) { (outErr: UnsafeMutablePointer<Unmanaged<CFError>?>) -> AnyObject? in
-                let d = CFPropertyListCreateWithData(kCFAllocatorSystemDefault, data._cfObject, CFOptionFlags(CFIndex(opt.rawValue)), outFmt, outErr)
-		return d?.takeRetainedValue()
-            }
-        }
-        format?.pointee = PropertyListFormat(rawValue: UInt(fmt.rawValue))!
-        if let err = error {
-            throw err.takeUnretainedValue()._nsObject
-        } else {
-            return __SwiftValue.fetch(nonOptional: decoded!)
-        }
-    }
-    
 #if !os(WASI)
-    internal final class func propertyList(with stream: CFReadStream, options opt: ReadOptions, format: UnsafeMutablePointer <PropertyListFormat>?) throws -> Any {
-        var fmt = kCFPropertyListBinaryFormat_v1_0
-        var error: Unmanaged<CFError>? = nil
-        let decoded = withUnsafeMutablePointer(to: &fmt) { (outFmt: UnsafeMutablePointer<CFPropertyListFormat>) -> AnyObject? in
-            withUnsafeMutablePointer(to: &error) { (outErr: UnsafeMutablePointer<Unmanaged<CFError>?>) -> AnyObject? in
-                return CFPropertyListCreateWithStream(kCFAllocatorSystemDefault, stream, 0, CFOptionFlags(CFIndex(opt.rawValue)), outFmt, outErr).takeRetainedValue()
+    internal class func propertyList(with stream: CFReadStream, options opt: ReadOptions, format: UnsafeMutablePointer<PropertyListFormat>?) throws -> Any {
+        try propertyList(from: try _readAll(from: stream), options: opt, format: format)
+    }
+
+    /// Reads `stream` to its end. The caller opens the stream.
+    private class func _readAll(from stream: CFReadStream) throws -> Data {
+        let bufferSize = 64 * 1024
+        var data = Data()
+        try withUnsafeTemporaryAllocation(of: UInt8.self, capacity: bufferSize) { buffer in
+            while true {
+                let count = CFReadStreamRead(stream, buffer.baseAddress!, bufferSize)
+                if count < 0 {
+                    throw CocoaError(.propertyListReadStream, userInfo: [NSDebugDescriptionErrorKey : "The stream could not be read."])
+                }
+                if count == 0 {
+                    return
+                }
+                data.append(buffer.baseAddress!, count: count)
             }
         }
-        format?.pointee = PropertyListFormat(rawValue: UInt(fmt.rawValue))!
-        if let err = error {
-            throw err.takeUnretainedValue()._nsObject
-        } else {
-            return __SwiftValue.fetch(nonOptional: decoded!)
-        }
+        return data
     }
-    
-    open class func propertyList(with stream: InputStream, options opt: ReadOptions = [], format: UnsafeMutablePointer<PropertyListFormat>?) throws -> Any {
+
+    public class func propertyList(with stream: InputStream, options opt: ReadOptions = [], format: UnsafeMutablePointer<PropertyListFormat>?) throws -> Any {
         return try propertyList(with: stream._stream, options: opt, format: format)
     }
 #endif

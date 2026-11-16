@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 @_implementationOnly import CoreFoundation
+@_spi(SwiftCorelibsFoundation) import FoundationEssentials
 
 #if canImport(ObjectiveC)
 import ObjectiveC
@@ -182,6 +183,9 @@ internal final class __SwiftValue : NSObject, NSCopying {
             return val
         } else if let opt = value as? Unwrappable, opt.unwrap() == nil {
             return NSNull()
+        } else if let uid = value as? _PropertyListUID {
+            // `PropertyListSerialization` reads a keyed archiver UID as this struct. The property list writer needs the class.
+            return _NSKeyedArchiverUID(value: uid.value)
         } else {
             let boxed = (value as AnyObject)
             if boxed is NSObject {

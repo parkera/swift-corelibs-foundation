@@ -132,4 +132,27 @@ class TestPropertyListSerialization : XCTestCase {
         XCTAssertEqual(outData.count, byteCount)
         XCTAssertEqual(outData, raw)
     }
+
+    func test_keyedArchiveRoundTrip() throws {
+        let root: NSDictionary = ["key": "value", "number": NSNumber(value: 7)]
+        let archive = try NSKeyedArchiver.archivedData(withRootObject: root, requiringSecureCoding: false)
+        for format in [PropertyListSerialization.PropertyListFormat.binary, .xml] {
+            // Read the archive as a property list and write it again, so that the keyed archiver UIDs go through both directions.
+            let plist = try PropertyListSerialization.propertyList(from: archive, options: [], format: nil)
+            let rewritten = try PropertyListSerialization.data(fromPropertyList: plist, format: format, options: 0)
+            let unarchived = try XCTUnwrap(NSKeyedUnarchiver.unarchiveObject(with: rewritten) as? NSDictionary)
+            XCTAssertEqual(unarchived, root)
+        }
+    }
+
+    func test_valuesCastToObjects() throws {
+        let xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><plist version=\"1.0\"><dict><key>string</key><string>text</string><key>integer</key><integer>42</integer><key>real</key><real>1.5</real><key>bool</key><true/><key>array</key><array><string>a</string></array></dict></plist>"
+        let plist = try PropertyListSerialization.propertyList(from: Data(xml.utf8), options: [], format: nil)
+        let dictionary = try XCTUnwrap(plist as? NSDictionary)
+        XCTAssertEqual(dictionary["string"] as? NSString, "text")
+        XCTAssertEqual((dictionary["integer"] as? NSNumber)?.intValue, 42)
+        XCTAssertEqual((dictionary["real"] as? NSNumber)?.doubleValue, 1.5)
+        XCTAssertEqual((dictionary["bool"] as? NSNumber)?.boolValue, true)
+        XCTAssertEqual((dictionary["array"] as? NSArray)?.count, 1)
+    }
 }
